@@ -18,7 +18,6 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		// /start
 		for _, update := range updates.Result {
 			fmt.Printf("update: %+v\n", update)
 			fmt.Println("cbdata", update.CallbackQuery.Data)
@@ -57,11 +56,8 @@ func main() {
 				var keyboard []*bot.TgKeyboardButton
 
 				keyboard = append(keyboard, bot.NewBot().NewKeyboard("Content", "", "1"))
-
 				keyboard = append(keyboard, bot.NewBot().NewKeyboard("Банки", "", "2"))
-
 				keyboard = append(keyboard, bot.NewBot().NewKeyboard("Practice", "", "3"))
-
 				keyboard = append(keyboard, bot.NewBot().NewKeyboard("Ваша реклама", "", "pos4"))
 
 				_, err := tgbot.SendMessage(chatId, "VK practice bot #1", keyboard)
@@ -71,7 +67,6 @@ func main() {
 			} else {
 				tgbot.SendMessage(update.Message.Chat.Id, "Введите /start для запуска бота", nil)
 			}
-			// callback_query
 		}
 
 		time.Sleep(time.Second * 1)
