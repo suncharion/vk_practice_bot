@@ -18,11 +18,4 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-
-	// основной бесконечный цикл приложения
-	/*	for {
-
-
-		time.Sleep(time.Second * 1)
-	}*/
 }
