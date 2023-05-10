@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 )
@@ -60,6 +61,10 @@ type MessageAnswer struct {
 	Ok bool
 }
 
+type DeleteMessageAnswer struct {
+	Ok bool
+}
+
 type CallbackQuery struct {
 	Id      string
 	From    TelegramUser
@@ -106,7 +111,97 @@ func (a *Bot) GetUpdates() (*GetUpdatesAnswer, error) {
 	return &parsed, nil
 }
 
-//S отправка сообщений
+// удаление inline-клавиатуры из сообщения
+func (b *Bot) DeleteMessage(chat_id, message_id int) error {
+	data := map[string]interface{}{
+		"chat_id":    chat_id,
+		"message_id": message_id,
+	}
+	result, err := b.Query("deleteMessage", "POST", data)
+	if err != nil {
+		return err
+	}
+	var parsed DeleteMessageAnswer
+	err = json.Unmarshal([]byte(result), &parsed)
+	if err != nil {
+		return err
+	}
+	if !parsed.Ok {
+		return fmt.Errorf("Error during clearing previous message keyboard", result)
+	}
+	return nil
+}
+
+func (b *Bot) UpdateWebhook(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("got updates")
+
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println("Error reading webhook data", err)
+	}
+
+	var update TelegramUpdate
+	err = json.Unmarshal([]byte(data), &update)
+	if err != nil {
+		fmt.Println("Cannot parse JSON in update")
+		return
+	}
+
+	if update.CallbackQuery.Message.MessageId > 0 {
+		err = b.DeleteMessage(update.CallbackQuery.Message.Chat.Id, update.CallbackQuery.Message.MessageId)
+		if err != nil {
+			fmt.Println("Error deleting message", err)
+		}
+	}
+
+	if update.CallbackQuery.Data == "pos4" {
+		var keyboard []*TgKeyboardButton
+		keyboard = append(keyboard, b.NewKeyboard("Ваша реклама", "https://vk.com", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Ваша реклама", "https://vk.com", ""))
+		keyboard = append(keyboard, b.NewKeyboard("назад", "", "/start"))
+		b.SendMessage(update.CallbackQuery.Message.Chat.Id, "Ваша реклама", keyboard)
+	} else if update.CallbackQuery.Data == "1" {
+		var keyboard []*TgKeyboardButton
+		keyboard = append(keyboard, b.NewKeyboard("Twitch", "https://twitch.tv", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Youtube", "https://youtube.com", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Назад", "", "/start"))
+		b.SendMessage(update.CallbackQuery.Message.Chat.Id, "Content", keyboard)
+	} else if update.CallbackQuery.Data == "2" {
+		var keyboard []*TgKeyboardButton
+		keyboard = append(keyboard, b.NewKeyboard("Tinkoff", "https://tinkoff.ru", ""))
+		keyboard = append(keyboard, b.NewKeyboard("AlfaBank", "https://alfabank.ru", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Назад", "", "/start"))
+		b.SendMessage(update.CallbackQuery.Message.Chat.Id, "Банки", keyboard)
+	} else if update.CallbackQuery.Data == "3" {
+		var keyboard []*TgKeyboardButton
+		keyboard = append(keyboard, b.NewKeyboard("Github", "https://github.com/suncharion", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Leetcode", "https://leetcode.com/", ""))
+		keyboard = append(keyboard, b.NewKeyboard("Назад", "", "/start"))
+		b.SendMessage(update.CallbackQuery.Message.Chat.Id, "Practice", keyboard)
+	} else if update.Message.Text == "/start" || update.CallbackQuery.Data == "/start" {
+		var chatId int
+		if update.Message.Text != "" {
+			chatId = update.Message.Chat.Id
+		} else {
+			chatId = update.CallbackQuery.Message.Chat.Id
+		}
+		var keyboard []*TgKeyboardButton
+
+		keyboard = append(keyboard, b.NewKeyboard("Content", "", "1"))
+		keyboard = append(keyboard, b.NewKeyboard("Банки", "", "2"))
+		keyboard = append(keyboard, b.NewKeyboard("Practice", "", "3"))
+		keyboard = append(keyboard, b.NewKeyboard("Ваша реклама", "", "pos4"))
+
+		_, err := b.SendMessage(chatId, "VK practice bot #1", keyboard)
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		b.SendMessage(update.Message.Chat.Id, "Введите /start для запуска бота", nil)
+	}
+}
+
+// отправка сообщений
 func (c *Bot) SendMessage(chat_id int, text string, keyboard []*TgKeyboardButton) (*MessageAnswer, error) {
 	data := map[string]interface{}{
 		"chat_id": chat_id,
